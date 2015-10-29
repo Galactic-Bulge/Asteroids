@@ -20,6 +20,8 @@
 // Managers
 #include "InputManager.h"
 #include "CameraManager.h"
+#include "EntityManager.h"
+#include "ResourceManager.h"
 
 // State
 #include "StateMachine.h"
@@ -130,10 +132,10 @@ bool DirectXGameCore::Init()
 		return false;
 
 	// Register Game States
-    StateMachine<GameStates>* pState = StateMachine<GameStates>::instance();
-    pState->RegisterState<MenuState>( GameStates::MENU, device, deviceContext, swapChain );
-    pState->RegisterState<GameState>( GameStates::GAME, device, deviceContext, swapChain );
-    pState->RegisterState<ExitState>( GameStates::EXIT, device, deviceContext, swapChain );
+    StateMachine<GameStates>* pState = StateMachine<GameStates>::Instance();
+    pState->RegisterState<MenuState>( GameStates::MENU );
+    pState->RegisterState<GameState>( GameStates::GAME );
+    pState->RegisterState<ExitState>( GameStates::EXIT );
     pState->GoToState( GameStates::MENU );
 
 	// Everything was set up properly
@@ -260,6 +262,9 @@ bool DirectXGameCore::InitDirect3D()
 		return false;
 	}
 
+	ResourceManager::Instance()->RegisterDeviceAndContext(device, deviceContext);
+    ResourceManager::Instance()->RegisterSwapChain(swapChain);
+
 	// There are several remaining steps before we can reasonably use DirectX.
 	// These steps also need to happen each time the window is resized, 
 	// so we simply call the OnResize method here.
@@ -318,6 +323,9 @@ void DirectXGameCore::OnResize()
 	// uses the underlying textures
 	deviceContext->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
 
+    // Update the ResourceManager with the new RenderTarget and DepthStencil Views
+    ResourceManager::Instance()->RegisterRenderTargetAndDepthStencilView(renderTargetView, depthStencilView);
+
 	// Update the viewport to match the new window size and set it on the device
 	viewport.TopLeftX	= 0;
 	viewport.TopLeftY	= 0;
@@ -331,7 +339,7 @@ void DirectXGameCore::OnResize()
 	aspectRatio = (float)windowWidth / windowHeight;
 
     // Update the active Camera
-    Camera* active = CameraManager::instance()->GetActiveCamera();
+    Camera* active = CameraManager::Instance()->GetActiveCamera();
     active->SetAspectRatio( aspectRatio );
 }
 #pragma endregion
@@ -372,11 +380,10 @@ int DirectXGameCore::Run()
 			// Standard game loop type stuff
 			CalculateFrameStats();
 
-			InputManager::instance()->Update( deltaTime );
-
-            CameraManager::instance()->Update( deltaTime );
-
-            StateMachine<GameStates>::instance()->Update( deltaTime, totalTime, renderTargetView, depthStencilView );
+			InputManager::Instance()->Update(deltaTime);
+            CameraManager::Instance()->Update(deltaTime);
+            StateMachine<GameStates>::Instance()->Update(deltaTime, totalTime);
+            EntityManager::Instance()->Update(deltaTime, totalTime);
 		}
 	}
 
@@ -585,7 +592,7 @@ LRESULT DirectXGameCore::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 	case WM_LBUTTONDOWN:
 	case WM_MBUTTONDOWN:
 	case WM_RBUTTONDOWN:
-        InputManager::instance()->ReceiveMouseDown( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
+        InputManager::Instance()->ReceiveMouseDown( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
 		return 0;
 
 	// Messages that correspond to mouse button being released while the cursor
@@ -593,13 +600,13 @@ LRESULT DirectXGameCore::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 	case WM_LBUTTONUP:
 	case WM_MBUTTONUP:
 	case WM_RBUTTONUP:
-        InputManager::instance()->ReceiveMouseUp( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
+        InputManager::Instance()->ReceiveMouseUp( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
 		return 0;
 
 	// Message that occurs while the mouse moves over the window or while
 	// we're currently capturing it
 	case WM_MOUSEMOVE:
-        InputManager::instance()->ReceiveMouseMove( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
+        InputManager::Instance()->ReceiveMouseMove( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
 		return 0;
 	}
 

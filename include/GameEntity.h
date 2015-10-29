@@ -1,33 +1,31 @@
 #ifndef GAME_ENTITY_H
 #define GAME_ENTITY_H
 
-// DirectX
-#include <DirectXMath.h>
-#include "Renderer.h"
-
-#include "Transform.h"
-
-/*
-TODO 
-Handle velocity and movement
-Abstract this class for use as custom entities
-*/
-class GameEntity
+struct GameEntity
 {
+private:
+    std::uint32_t m_id; // Unique ID for this GameEntity.
+
 public:
 
-	GameEntity(Mesh* mesh, Material* mat);
-	~GameEntity(void);
+    /*
+     * Construct an invalid GameEntity with an ID of 0.
+     */
+    GameEntity(void) : m_id(0) { /* Nothing to do */ }
 
-	void Update(float dt);
-	void Draw();
+    /*
+     * Construct a GameEntity with the provided ID.
+     * @param   id      The id for this GameEntity.
+     */
+    explicit GameEntity(std::uint32_t id) : m_id(id) { /* Nothing to do */ }
 
-	Renderer GetRenderer() { return renderer; }
-    Transform* GetTransform() { return &transform; }
+    /* Getters */
+    std::uint32_t id(void) const { return m_id; }
 
-private:
-	Renderer renderer;
-	Transform transform;
+    GameEntity(const GameEntity& rhs) = default;
+    GameEntity& operator=(const GameEntity& rhs) = default;
+    GameEntity(GameEntity&& rhs) = default;
+    GameEntity& operator=(GameEntity&& rhs) = default;
 };
 
 #endif

@@ -1,14 +1,17 @@
 #include "CameraManager.h"
 #include "DebugCamera.h"
 
-CameraManager::CameraManager()
+#include "InputManager.h"
+
+CameraManager::CameraManager(void)
 {
     // Always create a DebugCamera.
     m_pDebugCamera = new DebugCamera( 0.0f, 0.0f, -5.0f );
     m_pActiveCamera = m_pDebugCamera;
+	debugActive = true;
 }
 
-CameraManager::~CameraManager()
+CameraManager::~CameraManager(void)
 {
     // Cleanup all registered Cameras.
     delete m_pDebugCamera;
@@ -16,15 +19,6 @@ CameraManager::~CameraManager()
     {
         delete pair.second;
     }
-}
-
-/*
- * Access the CameraManager Singleton.
- */
-CameraManager* CameraManager::instance( void )
-{
-    static CameraManager manager;
-    return &manager;
 }
 
 /*
@@ -66,6 +60,7 @@ bool CameraManager::SetActiveCamera( const std::string& id )
     }
 
     m_pActiveCamera = iter->second;
+	debugActive = false;
 
     return true;
 }
@@ -76,6 +71,7 @@ bool CameraManager::SetActiveCamera( const std::string& id )
 void CameraManager::ActivateDebugCamera( void )
 {
     m_pActiveCamera = m_pDebugCamera;
+	debugActive = true;
 }
 
 /*
@@ -85,5 +81,9 @@ void CameraManager::ActivateDebugCamera( void )
 void CameraManager::Update( float deltaTime )
 {
     m_pActiveCamera->Update( deltaTime );
+
+	InputManager* pManager = InputManager::Instance();
+	if (pManager->IsKeyDown('P')) this->ActivateDebugCamera();
+	else if (pManager->IsKeyDown('O')) this->SetActiveCamera("Main Camera");
 }
 

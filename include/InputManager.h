@@ -4,6 +4,8 @@
 // Windows
 #include <Windows.h>
 
+#include "Singleton.h"
+
 #include "Keycodes.h"
 
 struct KeyInfo
@@ -14,28 +16,25 @@ struct KeyInfo
 
 enum MouseButton{ LMB = VK_LBUTTON, RMB = VK_RBUTTON, MMB = VK_MBUTTON };
 
-class InputManager
+class InputManager : public Singleton<InputManager>
 {
 private:
     bool m_didMouseMove;            // Boolean indicating if the mouse moved this frame
     POINT m_prevPos, m_currPos;     // Current and previous mouse positions
     KeyInfo m_keys[ NUM_KEYS ];     // Array of keyboard state
 
-    // Private to prevent construction outside instance() method
-	InputManager() : m_didMouseMove( false ) {}
-	~InputManager() {}
-
-    // Deleted to prevent copying/moving
-	InputManager(const InputManager& rhs) = delete;
-	InputManager(InputManager&& rhs) = delete;
-	InputManager& operator=(const InputManager& rhs) = delete;
-	InputManager& operator=(InputManager&& rhs) = delete;
-
 public:
-    /*
-     * Access the InputManager Singleton
-     */
-    static InputManager* instance();
+    // Private to prevent construction outside instance() method
+	InputManager(void)
+        : m_didMouseMove(false)
+    {
+        /* Nothing to do. */
+    }
+
+	virtual ~InputManager()
+    {
+        /* Nothing to do. */
+    }
 
     /*
      * Update the state of the InputManager

@@ -19,6 +19,7 @@ Transform::Transform()
 	translation = XMFLOAT3( 0.0f, 0.0f, 0.0f );
 	scale		= XMFLOAT3( 1.0f, 1.0f, 1.0f );
 	rotation	= XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f); // Identity Quaternion
+	rotationEuler = XMFLOAT3( 0.0f, 0.0f, 0.0f );
 }
 
 Transform::Transform(XMFLOAT3 translation)
@@ -32,6 +33,7 @@ Transform::Transform(XMFLOAT3 translation)
 	this->translation = translation;
 	scale		= XMFLOAT3(1.0f, 1.0f, 1.0f);
 	rotation	= XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f); // Identity Quaternion
+	rotationEuler = XMFLOAT3( 0.0f, 0.0f, 0.0f );
 }
 
 
@@ -126,7 +128,12 @@ XMFLOAT3 Transform::GetScale() const
 
 XMFLOAT4 Transform::GetRotation() const
 {
-    return rotation;
+	return rotation;
+}
+
+XMFLOAT3 Transform::GetRotationEuler() const
+{
+	return rotationEuler;
 }
 
 const std::vector<Transform*>& Transform::GetChildren() const
@@ -157,17 +164,22 @@ void Transform::SetTranslation(float x, float y, float z)
 
 void Transform::SetRotation(XMVECTOR vec)
 {
+	XMFLOAT3 container;
+	XMStoreFloat3(&container, vec);
+	rotationEuler = XMFLOAT3(container.x, container.y, container.z);
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYawFromVector(vec));
 }
 
 void Transform::SetRotation(XMFLOAT3 vec)
 {
+	rotationEuler = vec;
 	XMVECTOR rot = XMLoadFloat3(&vec);
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYawFromVector(rot));
 }
 
 void Transform::SetRotation(float x, float y, float z)
 {
+	rotationEuler = XMFLOAT3(x, y, z);
     XMStoreFloat4(&rotation, XMQuaternionRotationRollPitchYaw(x, y, z));
 }
 
@@ -202,12 +214,17 @@ void Transform::Translate(float x, float y, float z)
 
 void Transform::Rotate(XMVECTOR vec)
 {
+	XMVECTOR rot = XMLoadFloat3(&rotationEuler);
+	XMStoreFloat3(&rotationEuler, XMVectorAdd(rot, vec));
     XMVECTOR newRotation = XMQuaternionMultiply(XMLoadFloat4(&rotation), XMQuaternionRotationRollPitchYawFromVector(vec));
     XMStoreFloat4(&rotation, newRotation);
 }
 
 void Transform::Rotate(XMFLOAT3 vec)
 {
+	rotationEuler.x += vec.x;
+	rotationEuler.y += vec.y;
+	rotationEuler.z += vec.z;
     XMVECTOR euler = XMQuaternionRotationRollPitchYawFromVector(XMLoadFloat3(&vec));
     XMVECTOR newRotation = XMQuaternionMultiply(XMLoadFloat4(&rotation), euler);
     XMStoreFloat4(&rotation, newRotation);
@@ -215,6 +232,9 @@ void Transform::Rotate(XMFLOAT3 vec)
 
 void Transform::Rotate(float x, float y, float z)
 {
+	rotationEuler.x += x;
+	rotationEuler.y += y;
+	rotationEuler.z += z;
     XMVECTOR newRotation = XMQuaternionMultiply(XMLoadFloat4(&rotation), XMQuaternionRotationRollPitchYaw( x, y, z ));
     XMStoreFloat4(&rotation, newRotation);
 }

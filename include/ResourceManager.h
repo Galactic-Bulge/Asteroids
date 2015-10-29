@@ -12,42 +12,42 @@
 #include "SimpleShader.h"
 #include "Material.h"
 
-class ResourceManager
+#include "Singleton.h"
+
+class ResourceManager : public Singleton<ResourceManager>
 {
 private:
     std::unordered_map<std::string, Mesh> meshes;
     std::unordered_map<std::string, ISimpleShader*> shaders;
     std::unordered_map<std::string, ID3D11ShaderResourceView*> textures;
 	std::unordered_map<std::string, ID3D11SamplerState*> samplers;
+	std::unordered_map<std::string, ID3D11RasterizerState*> rasterizers;
+	std::unordered_map<std::string, ID3D11DepthStencilState*> depthStencils;
 	std::unordered_map<std::string, Material*> materials;
 
-    ID3D11Device* device;
-    ID3D11DeviceContext* deviceContext;
+    ID3D11Device*           device;
+    ID3D11DeviceContext*    deviceContext;
+    ID3D11RenderTargetView* renderTargetView;
+    ID3D11DepthStencilView* depthStencilView;
+    IDXGISwapChain*         swapChain;
 
-    // Private to prevent instantiation/destruction outside of instance() method.
-    ResourceManager();
-    ~ResourceManager();
-
-    // Deleted to prevent copying/moving
-    ResourceManager( const ResourceManager& rhs ) = delete;
-    ResourceManager( ResourceManager&& rhs ) = delete;
-    ResourceManager& operator=( const ResourceManager& rhs ) = delete;
-    ResourceManager& operator=( ResourceManager&& rhs ) = delete;
 public:
+    ResourceManager(void);
+    virtual ~ResourceManager(void);
 
     // Getters
     Mesh*                           GetMesh(const std::string& id );
+	Material*						GetMaterial(const std::string& id);
     ISimpleShader*                  GetShader(const std::string& id );
     ID3D11ShaderResourceView*       GetTexture(const std::string& id );
 	ID3D11SamplerState*             GetSamplerState(const std::string& id);
-	Material*						GetMaterial(const std::string& id);
-
-    /*
-     * Access the ResourceManager Singleton
-     */
-    static ResourceManager* instance();
-
-	ID3D11DeviceContext* GetDeviceContext() { return this->deviceContext; }
+    ID3D11RasterizerState*          GetRasterizerState(const std::string& id);
+    ID3D11DepthStencilState*        GetDepthStencilState(const std::string& id);
+    ID3D11Device*                   GetDevice() { return this->device; }
+	ID3D11DeviceContext*            GetDeviceContext() { return this->deviceContext; }
+    ID3D11RenderTargetView*         GetRenderTargetView() { return this->renderTargetView; }
+    ID3D11DepthStencilView*         GetDepthStencilView() { return this->depthStencilView; }
+    IDXGISwapChain*                 GetSwapChain() { return this->swapChain; }
 
     /*
      * Register an ID3D11Device and ID3D11DeviceContext with the ResourceManager.
@@ -55,6 +55,19 @@ public:
      * @param   deviceContext       The ID3D11DeviceContext to register.
      */
     void RegisterDeviceAndContext( ID3D11Device* const device, ID3D11DeviceContext* const deviceContext );
+
+    /*
+     * Register an ID3D11RenderView and ID3D11DepthStencilView with the ResourceManager.
+     * @param   pRender             The ID3D11RenderTargetView to register.
+     * @param   pDepthStencil       The ID3D11DepthStencilView to register.
+     */
+    void RegisterRenderTargetAndDepthStencilView(ID3D11RenderTargetView* pRender, ID3D11DepthStencilView* pDepthStencil);
+
+    /*
+     * Register an IDXGISwapChain
+     * @param   pSwapChain          The IDXGISwapChain to register.
+     */
+    void RegisterSwapChain(IDXGISwapChain* pSwapChain);
 
     /*
      * Register a 3D Mesh with the ResourceManager
@@ -128,7 +141,7 @@ public:
      * @param       filename    The filename of the texture.
      * @return  A bool indicating if the operation was successful.
      */
-    bool RegisterTexture(const std::string& id, LPCWSTR filename );
+    bool RegisterTexture(const std::string& id, const std::wstring& filename );
 
 	/*
 	* Register an ID3D11SamplerState* with the ResourceManager.
@@ -136,7 +149,23 @@ public:
 	* @param       filename    The description used to create the ID3D11SamplerState.
 	* @return  A bool indicating if the operation was successful.
 	*/
-	bool RegisterSamplerState(const std::string& id, D3D11_SAMPLER_DESC pSamplerDesc);
+	bool RegisterSamplerState(const std::string& id, D3D11_SAMPLER_DESC samplerDesc);
+
+    /*
+     * Register an ID3D11RasterizerState with the ResourceManager.
+     * @param       id                  The id to store the ID3D11RasterizerState* at.
+     * @param       rasterizerDesc      The description used to instantiate the ID3D11RasterizerState.
+     * @return A boolean indicating if the operation was successful.
+     */
+    bool RegisterRasterizerState(const std::string& id, D3D11_RASTERIZER_DESC rasterizerDesc);
+
+    /*
+     * Register an ID3D11DepthStencilState with the ResourceManager.
+     * @param       id                  The id to store the ID3D11DepthStencilState at.
+     * @param       depthStencilDesc    The description used to instantiate the ID3D11DepthStencilState.
+     * @return A boolean indicating if the operation was successful.
+     */
+    bool RegisterDepthStencilState(const std::string& id, D3D11_DEPTH_STENCIL_DESC depthStencilDesc);
 
 	/*
 	* Register a material with the ResourceManager

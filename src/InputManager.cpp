@@ -1,15 +1,6 @@
 #include "InputManager.h"
 
 /*
- * Access the InputManager Singleton
- */
-InputManager* InputManager::instance()
-{
-    static InputManager manager;
-    return &manager;
-};
-
-/*
  * Update the state of the InputManager
  * @param   deltaTime   Elapsed time between frames
  */

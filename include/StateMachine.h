@@ -9,39 +9,29 @@
 // IGameState interface
 #include "IGameState.h"
 
+#include "Singleton.h"
+
 template <typename T>
-class StateMachine
+class StateMachine : public Singleton<StateMachine<T>>
 {
 private:
     IGameState* m_pCurrState;
     std::map<T, IGameState*> m_states;
 
-    // Private to prevent instantiation outside instance method.
-    StateMachine::StateMachine( void ) : m_pCurrState( nullptr )
+public:
+    StateMachine(void)
+        : m_pCurrState(nullptr)
     {
         static_assert( std::is_enum<T>::value, "Must be an Enum type!" );
     }
 
-    ~StateMachine( void )
+    virtual ~StateMachine(void)
     {
         // Cleanup IGameStates
         for( auto& pair : m_states )
         {
             delete pair.second;
         }
-    }
-
-    // Deleted to prevent copying/moving
-    StateMachine( const StateMachine<T>& rhs ) = delete;
-    StateMachine( StateMachine<T>&& rhs ) = delete;
-    StateMachine& operator=( const StateMachine& rhs ) = delete;
-    StateMachine& operator=( StateMachine&& rhs ) = delete;
-
-public:
-    static StateMachine<T>* instance( void )
-    {
-        static StateMachine<T> machine;
-        return &machine;
     }
 
     IGameState* const GetCurrentState( T state )
@@ -95,12 +85,11 @@ public:
         return true;
     }
 
-    void Update( float deltaTime, float totalTime, ID3D11RenderTargetView* const pRenderTargetView, ID3D11DepthStencilView* const pDepthStencilView )
+    void Update( float deltaTime, float totalTime )
     {
         if( m_pCurrState )
         {
             m_pCurrState->Update( deltaTime, totalTime );
-            m_pCurrState->Render( deltaTime, totalTime, pRenderTargetView, pDepthStencilView );
         }
     }
 };

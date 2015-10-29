@@ -23,7 +23,7 @@ DebugCamera::~DebugCamera() { /* Nothing to do. */ }
  */
 void DebugCamera::Update(float dt)
 {
-	InputManager* pManager = InputManager::instance();
+	InputManager* pManager = InputManager::Instance();
 
 	// Current speed
 	float moveSpeed = m_moveSpeed * dt;
