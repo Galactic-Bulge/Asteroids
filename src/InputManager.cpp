@@ -1,51 +1,55 @@
 #include "InputManager.h"
 
-/*
- * Access the InputManager Singleton
- */
-InputManager* InputManager::instance()
+using namespace DirectX;
+
+InputManager::InputManager(void)
+    : m_didMouseMove(false)
 {
-    static InputManager manager;
-    return &manager;
-};
+    ZeroMemory(&m_prevPos, sizeof(POINT));
+    ZeroMemory(&m_currPos, sizeof(POINT));
+    ZeroMemory(&m_kbState, sizeof(Keyboard::State));
+    ZeroMemory(&m_mouseState, sizeof(Mouse::State));
+
+    m_pKeyboard = new Keyboard();
+    m_pKBStateTracker = new Keyboard::KeyboardStateTracker();
+    m_pMouse = new Mouse();
+    m_pMouseStateTracker = new Mouse::ButtonStateTracker();
+}
+
+InputManager::~InputManager(void)
+{
+    delete m_pKeyboard;
+    delete m_pKBStateTracker;
+    delete m_pMouse;
+    delete m_pMouseStateTracker;
+}
+
+void InputManager::SetWindow(HWND window)
+{
+    m_pMouse->SetWindow(window);
+}
 
 /*
  * Update the state of the InputManager
  * @param   deltaTime   Elapsed time between frames
  */
-void InputManager::Update( float deltaTime )
+void InputManager::Update(float deltaTime)
 {
-    // Retrieve the entire keyboard state from Windows
-    BYTE keys[ NUM_KEYS ];
-    GetKeyboardState( keys );
+    // Update Keyboard
+    m_kbState = m_pKeyboard->GetState();
+    m_pKBStateTracker->Update(m_kbState);
 
-    // Update state of KeyInfo vector
-    for( SHORT i = 0; i <= 0xFF; ++i )
-    {
-        KeyInfo& info = m_keys[ i ];
+    // Update Mouse
+    m_mouseState = m_pMouse->GetState();
+    m_pMouseStateTracker->Update(m_mouseState);
 
-        // Update hold duration
-		bool isKeyDown = ( keys[ i ] & 0x80 ) != 0x0;
-        if( isKeyDown )
-        {
-            info.keyHeldDuration += deltaTime;
-        }
-        // Reset hold duration if key is released
-        else if( info.isKeyDown )
-        {
-            info.keyHeldDuration = 0.0f;
-        }
+    m_prevPos.x = m_currPos.x;
+    m_prevPos.y = m_currPos.y;
 
-        info.isKeyDown = isKeyDown;
-    }
+    m_currPos.x = m_mouseState.x;
+    m_currPos.y = m_mouseState.y;
 
-    // Update PreviousMousePos if the mouse did not move
-    if( !m_didMouseMove )
-    {
-        m_prevPos.x = m_currPos.x;
-        m_prevPos.y = m_currPos.y;
-    }
-    m_didMouseMove = false;
+    m_didMouseMove = (m_prevPos.x == m_currPos.x && m_prevPos.y == m_currPos.y);
 }
 
 /*
@@ -54,7 +58,7 @@ void InputManager::Update( float deltaTime )
  */
 bool InputManager::IsKeyDown(SHORT key) const
 {
-    return m_keys[ key ].isKeyDown;
+    return m_kbState.IsKeyDown(static_cast<Keyboard::Keys>(key));
 }
 
 /*
@@ -63,43 +67,100 @@ bool InputManager::IsKeyDown(SHORT key) const
  */
 bool InputManager::IsKeyUp(SHORT key) const
 {
-    return !( m_keys[ key ].isKeyDown );
+    return !IsKeyDown(key);
 }
 
 /*
- * Return the duration that the provided key has been held.
+ * Check if the provided key was pressed this frame.
  * @param   key         The key to test.
  */
-float InputManager::KeyHeldDuration(SHORT key) const
+bool InputManager::IsKeyPressed(SHORT key) const
 {
-    return m_keys[ key ].keyHeldDuration;
+    return m_pKBStateTracker->IsKeyPressed(static_cast<Keyboard::Keys>(key));
+}
+
+/*
+ * Check if the provided key was released this frame.
+ * @param   key         The key to test.
+ */
+bool InputManager::IsKeyReleased(SHORT key) const
+{
+    return m_pKBStateTracker->IsKeyReleased(static_cast<Keyboard::Keys>(key));
 }
 
 /*
  * Check if the provided MouseButton is pressed.
  * @param   btn         The MouseButton to test.
  */
-bool InputManager::IsMouseDown( MouseButton btn ) const
+bool InputManager::IsMouseDown(MouseButton btn) const
 {
-    return m_keys[ btn ].isKeyDown;
+    switch(btn)
+    {
+        case MouseButton::LMB:
+            return m_pMouseStateTracker->leftButton == Mouse::ButtonStateTracker::HELD;
+
+        case MouseButton::MMB:
+            return m_pMouseStateTracker->middleButton == Mouse::ButtonStateTracker::HELD;
+
+        case MouseButton::RMB:
+            return m_pMouseStateTracker->rightButton == Mouse::ButtonStateTracker::HELD;
+
+        default:
+            return false;
+    }
 }
 
 /*
  * Check if the provided MouseButton is released.
  * @param   btn         The MouseButton to test.
  */
-bool InputManager::IsMouseUp( MouseButton btn ) const
+bool InputManager::IsMouseUp(MouseButton btn) const
 {
-    return !( m_keys[ btn ].isKeyDown );
+    return !IsMouseDown(btn);
 }
 
 /*
- * Return the duration that the provided MouseButton has been held.
+ * Check if the provided MouseButton was pressed this frame.
  * @param   btn         The MouseButton to test.
  */
-float InputManager::MouseHeldDuration( MouseButton btn ) const
+bool InputManager::IsMousePressed(MouseButton btn) const
 {
-    return m_keys[ btn ].keyHeldDuration;
+    switch(btn)
+    {
+        case MouseButton::LMB:
+            return m_pMouseStateTracker->leftButton == Mouse::ButtonStateTracker::PRESSED;
+
+        case MouseButton::MMB:
+            return m_pMouseStateTracker->middleButton == Mouse::ButtonStateTracker::PRESSED;
+
+        case MouseButton::RMB:
+            return m_pMouseStateTracker->rightButton == Mouse::ButtonStateTracker::PRESSED;
+
+        default:
+            return false;
+    }
+}
+
+/*
+ * Check if the provided MouseButton was released this frame.
+ * @param   btn         The MouseButton to test.
+ */
+bool InputManager::IsMouseReleased(MouseButton btn) const
+{
+    switch(btn)
+    {
+        case MouseButton::LMB:
+            return m_pMouseStateTracker->leftButton == Mouse::ButtonStateTracker::RELEASED;
+
+        case MouseButton::MMB:
+            return m_pMouseStateTracker->middleButton == Mouse::ButtonStateTracker::RELEASED;
+
+        case MouseButton::RMB:
+            return m_pMouseStateTracker->rightButton == Mouse::ButtonStateTracker::RELEASED;
+
+        default:
+            return false;
+    }
 }
 
 /*
@@ -116,49 +177,4 @@ POINT InputManager::GetCurrentMousePos() const
 POINT InputManager::GetPreviousMousePos() const
 {
     return m_prevPos;
-}
-
-/*
- * Invoked by the message processing function on WM_MOUSEMOVE
- */
-void InputManager::ReceiveMouseDown( HWND hWnd, WPARAM btnState, int x, int y )
-{
-    m_prevPos.x = m_currPos.x;
-    m_prevPos.y = m_currPos.y;
-    m_currPos.x = x;
-    m_currPos.y = y;
-
-    SetCapture(hWnd);
-}
-
-/*
- *  Invoked by the message processing function on:
- *      WM_LBUTTONUP
- *      WM_RBUTTONUP
- *      WM_MBUTTONUP
- */
-void InputManager::ReceiveMouseUp( HWND hWnd, WPARAM btnState, int x, int y )
-{
-    m_prevPos.x = m_currPos.x;
-    m_prevPos.y = m_currPos.y;
-    m_currPos.x = x;
-    m_currPos.y = y;
-
-    ReleaseCapture();
-}
-
-/*
- *  Invoked by the message processing function on:
- *      WM_LBUTTONDOWN
- *      WM_RBUTTONDOWN
- *      WM_MBUTTONDOWN
- */
-void InputManager::ReceiveMouseMove( HWND hWnd, WPARAM btnState, int x, int y )
-{
-    m_prevPos.x = m_currPos.x;
-    m_prevPos.y = m_currPos.y;
-    m_currPos.x = x;
-    m_currPos.y = y;
-
-    m_didMouseMove = true;
 }

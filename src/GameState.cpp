@@ -1,21 +1,47 @@
 #include "GameState.h"
 
+// STD
+#include <ctime>
+#include <cstdlib>
+
 // Managers
-#include "Material.h"
+#include "EntityManager.h"
 #include "InputManager.h"
-#include "CameraManager.h"
 #include "ResourceManager.h"
+#include "CameraManager.h"
+
+// Events
+#include "EventManager.h"
+#include "IEventListener.h"
 
 // State
 #include "StateMachine.h"
 #include "GameStates.h"
 
-// DirectX
-#include <d3d11.h>
-#include <DirectXMath.h>
-#include "DXMacros.h"
-#include "Vertex.h"
-#include "SimpleShader.h"
+// Components
+#include "TransformComponent.h"
+#include "RenderComponent.h"
+#include "AsteroidRenderComponent.h"
+#include "PhysicsComponent.h"
+#include "InputComponent.h"
+#include "LightComponent.h"
+#include "ScriptComponent.h"
+#include <CollisionComponent.h>
+#include <AttackComponent.h>
+
+// Scripts
+#include "AutoDestructScript.h"
+
+// Systems
+#include "PhysicsSystem.h"
+#include "ScriptSystem.h"
+#include "InputControllerSystem.h"
+#include "ClearSystem.h"
+#include "RenderSystem.h"
+#include "SkyboxSystem.h"
+#include "SwapSystem.h"
+#include <CollisionSystem.h>
+#include <AttackSystem.h>
 
 // For the DirectX Math library
 using namespace DirectX;
@@ -29,59 +55,58 @@ using namespace DirectX;
 void GameState::Enter( void )
 {
     // Register resources with the ResourceManager
-    if( !isInitialized )
+    if(!isInitialized)
     {
-        ResourceManager* pManager = ResourceManager::instance();
-        pManager->RegisterDeviceAndContext( m_pDevice, m_pDeviceContext );
+		CameraManager* camMan = CameraManager::Instance();
+		camMan->RegisterCamera<Camera>("Main Camera", 0.0f, 0.0f, -5.0f);
+		camMan->SetActiveCamera("Main Camera");
 
-        /* Mesh Creation */
-        pManager->RegisterMesh( "Sphere", "models/sphere.obj" );
-        pManager->RegisterMesh( "Helix", "models/helix.obj" );
-        pManager->RegisterMesh( "Cube", "models/cube.obj" );
+        // Parse "resources.json" for any resources.
+        ResourceManager* pManager = ResourceManager::Instance();
+		pManager->ParseJSONFile("json/resources.json");
 
-        /* Shader Creation */
-        pManager->RegisterShader<SimpleVertexShader>( "StandardVertex", L"VertexShader.cso" );
-        pManager->RegisterShader<SimplePixelShader>( "StandardPixel", L"PixelShader.cso" );
+		this->LoadCurrentLevel();
+		EventManager* pEventManager = EventManager::Instance();
+		pEventManager->Register("WarpEnd", this);
+		pEventManager->Register("AsteroidDestroyed", this);
 
-		/* Texture Creation */
-        pManager->RegisterTexture("Diffuse", L"textures/crate.png" );
-        pManager->RegisterTexture("Rust", L"textures/rusty.jpg" );
-        pManager->RegisterTexture("Rust_Spec", L"textures/rustySpec.png" );
+        // Register Systems.
+        EntityManager* pEntity = EntityManager::Instance();
+        pEntity->AddSystem<PhysicsSystem>();
+		pEntity->AddSystem<CollisionSystem>();
+		pEntity->AddSystem<InputControllerSystem>();
+        pEntity->AddSystem<ClearSystem>();
+        pEntity->AddSystem<RenderSystem>();
+        pEntity->AddSystem<SkyboxSystem>();
+		pEntity->AddSystem<SwapSystem>();
+		pEntity->AddSystem<ScriptSystem>();
+		pEntity->AddSystem<AttackSystem>();
 
-		/* Material Creation */
-		Material* defaultMat = new Material
-        (
-            static_cast<SimpleVertexShader*>(pManager->GetShader("StandardVertex")),
-            static_cast<SimplePixelShader*>(pManager->GetShader("StandardPixel"))
-        );
-		defaultMat->AddTexture("diffuseTexture", "Diffuse");
-		defaultMat->AddTexture("rustTexture", "Rust");
-		defaultMat->AddTexture("specMapTexture", "Rust_Spec");
-		pManager->RegisterMaterial("default", defaultMat);
+        // Make a SpotLight
+        {
+            GameEntity e = pEntity->Create("Light");
+            pEntity->AddComponent<SpotLightComponent>
+            (
+                e,                                          // Entity
+                XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),           // Color
+                XMFLOAT3(0.0f, 0.0f, -1.0f),                // Position
+                XMFLOAT3(0.0f, 0.0f, 1.0f),                 // Direction
+                30.0f,                                      // Specular Exponent
+                1.0f                                        // SpotLight Power
+            );
+        }
 
-        /* Sampler Creation */
-        D3D11_SAMPLER_DESC samplerDesc;
-        ZeroMemory(&samplerDesc, sizeof(samplerDesc));
-        samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-        samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-        samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-        pManager->RegisterSamplerState( "trilinear", samplerDesc );
-
-        /* GameEntity Creation */
-        entities.emplace_back(pManager->GetMesh("Sphere"), pManager->GetMaterial("default"));
-        entities.emplace_back(pManager->GetMesh("Helix"),  pManager->GetMaterial("default"));
-        entities.emplace_back(pManager->GetMesh("Cube"), pManager->GetMaterial("default"));
-
-        GameEntity* sphere = &entities[ 0 ];
-        GameEntity* helix = &entities[ 1 ];
-        GameEntity* cube = &entities[ 2 ];
-
-        sphere->GetTransform()->AddChild(helix->GetTransform());
-        helix->GetTransform()->AddChild(cube->GetTransform());
-        helix->GetTransform()->Translate(0.0f, 0.0f, 2.0f);
-        cube->GetTransform()->Translate(2.0f, 0.0f, 0.0f);
+		//Make Player
+		GameEntity player = pEntity->Create("Player");
+		pEntity->AddComponent<RenderComponent>(player, pManager->GetMaterial("ship"), pManager->GetMesh("Ship"));
+        pEntity->AddComponent<InputComponent>(player, 50.0f);
+		pEntity->AddComponent<CollisionComponent>(player, *pManager->GetMesh("Ship"), XMFLOAT3(0, 0, 0), 0.0007f);
+		pEntity->AddComponent<AttackComponent>(player, 5.0f);
+		TransformComponent* pTrans = pEntity->AddComponent<TransformComponent>(player, XMFLOAT3(0, 0, 1));
+		pTrans->transform.SetScale(.001f);
+		PhysicsComponent* pPhysics = pEntity->AddComponent<PhysicsComponent>(player, XMVectorZero(), XMVectorSet(0, 0, 0, 0));
+		pPhysics->drag = 0.95f;
+		pPhysics->rotationalDrag = 0.85f;
 
         isInitialized = true;
     }
@@ -91,75 +116,77 @@ void GameState::Enter( void )
 
 #pragma endregion
 
-#pragma region Game Loop
+void GameState::LoadCurrentLevel()
+{
+	this->currentLevel++;
+	EntityManager* pEntity = EntityManager::Instance();
+	ResourceManager* pManager = ResourceManager::Instance();
 
+	Material* asteroidMat = pManager->GetMaterial("asteroid");
+
+	srand(time(0));
+	int span = 10;
+	int toAdd = 30 + currentLevel * 5;
+	this->asteroids = toAdd;
+	for (int i = 0; i < toAdd; ++i)
+	{
+		GameEntity e = pEntity->Create("Asteroid");
+
+		float scale = 1 + rand()*0.0001f;
+
+		XMFLOAT3 position = XMFLOAT3(rand()*rand() % (span * 2) - span, rand()*rand() % (span * 2) - span, i * 5 + 155);
+		TransformComponent* transform = pEntity->AddComponent<TransformComponent>(e, position);
+		transform->transform.SetRotation(XMFLOAT3(rand() * 3, rand() * 3, rand() * 3));
+		transform->transform.SetScale(scale);
+		pEntity->AddComponent<RenderComponent>(e, asteroidMat, pManager->GetMesh("Sphere"));
+		pEntity->AddComponent<AsteroidRenderComponent>(e, i+1);
+		PhysicsComponent* phys = pEntity->AddComponent<PhysicsComponent>(e, XMVectorZero(), XMVectorSet(0.0f, 0.0f, -1.0f + currentLevel*-2.0f, 0.0f));
+		phys->velocity.z = -15 - rand()%15;
+		ScriptComponent* script = pEntity->AddComponent<ScriptComponent>(e);
+		script->AddScript<AutoDestructScript>(-5.0f);
+		pEntity->AddComponent<CollisionComponent>(e, 0.55f*scale, position);
+	}
+}
+
+// One Listener can route multiple events, check the name to route properly
+void GameState::EventRouter(const std::string& name, void* data)
+{
+    // Finished warp, initialize new level.
+	if (name == "WarpEnd")
+    {
+		LoadCurrentLevel();
+    }
+    // Called whenever an asteroid is shot or auto destructs.
+    else if (name == "AsteroidDestroyed")
+    {
+		asteroids--;
+		if (asteroids <= 0) {
+			EventManager::Instance()->Fire("WarpBegin", nullptr); //TODO change to WarpStart
+		}
+	}
+}
+
+
+
+#pragma region Game Loop
 // --------------------------------------------------------
 // Update your game here - take input, move objects, etc.
 // --------------------------------------------------------
 void GameState::Update( float deltaTime, float totalTime )
 {
 	// Handle Input
-    InputManager* pInput = InputManager::instance();
-    StateMachine<GameStates>* pState = StateMachine<GameStates>::instance();
+    InputManager* pInput = InputManager::Instance();
+    StateMachine<GameStates>* pState = StateMachine<GameStates>::Instance();
 
     if( pInput->IsKeyDown( '1' ) )
     {
         pState->GoToState( GameStates::MENU );
     }
-    else if( pInput->IsKeyDown( '3' ) )
-    {
-        pState->GoToState( GameStates::EXIT );
-    }
-
-    // Translate the cube forward, and slowly rotate all three GameEntities
-    entities[0].GetTransform()->Translate(0.5f * deltaTime, 0.0f, 0.0f);
-	for (GameEntity& ge : entities)
+	else if (pInput->IsKeyDown('3'))
 	{
-		ge.GetTransform()->Rotate(0.0f, deltaTime * 5.0f * XM_PI / 180.0f, 0.0f);
+		pState->GoToState(GameStates::EXIT);
 	}
 }
 
-void GameState::Render( float deltaTime, float totalTime, ID3D11RenderTargetView* const pRenderTargetView, ID3D11DepthStencilView* const pDepthStencilView )
-{
-    // Background color (Cornflower Blue in this case) for clearing
-    const float color[4] = {0.4f, 0.6f, 0.75f, 0.0f};
-
-    // Clear the render target and depth buffer (erases what's on the screen)
-    m_pDeviceContext->ClearRenderTargetView( pRenderTargetView, color );
-    m_pDeviceContext->ClearDepthStencilView( pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0 );
-
-    // Update the Shaders
-    {
-        ResourceManager* pManager = ResourceManager::instance();
-        ISimpleShader   *pVertexShader = pManager->GetShader( "StandardVertex" ),
-                        *pPixelShader = pManager->GetShader( "StandardPixel" );
-        Camera* pCamera = CameraManager::instance()->GetActiveCamera();
-        XMFLOAT3 camPos = pCamera->transform.GetTranslation();
-
-        // Update the Vertex Shader
-        pVertexShader->SetMatrix4x4("view", pCamera->GetViewMatrix());
-        pVertexShader->SetMatrix4x4("projection", pCamera->GetProjectionMatrix());
-
-        // Update the Pixel Shader
-        pPixelShader->SetFloat3("DirLightDirection", XMFLOAT3(1, 1, 1));
-        pPixelShader->SetFloat4("DirLightColor", XMFLOAT4(0.3f, 0.3f, 0.3f, 1));
-        pPixelShader->SetFloat3("PointLightPosition", XMFLOAT3(3, 3, -3));
-        pPixelShader->SetFloat4("PointLightColor", XMFLOAT4(1, 1, 1, 1));
-        pPixelShader->SetFloat3("CameraPosition", XMFLOAT3(camPos.x, camPos.y, camPos.z));
-        pPixelShader->SetFloat("time", totalTime);
-    }
-
-    // We are drawing triangles
-    m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    // Render each GameEntity
-    for( GameEntity& ge : entities )
-    {
-        ge.Draw();
-    }
-
-    // Present the buffer
-    HR( m_pSwapChain->Present( 0, 0 ) );
-}
-
 void GameState::Exit( void ) { /* Nothing to do. */ }
+#pragma endregion

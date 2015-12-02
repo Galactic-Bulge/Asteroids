@@ -1,0 +1,206 @@
+[
+    {
+        "ID" : "Sphere",
+        "Type" : "Mesh",
+        "Filename" : "models/sphere.obj"
+    },
+
+    {
+        "ID" : "Helix",
+        "Type" : "Mesh",
+        "Filename" : "models/helix.obj"
+    },
+
+    {
+        "ID" : "Cube",
+        "Type" : "Mesh",
+        "Filename" : "models/cube.obj"
+    },
+
+    {
+        "ID" : "Ship",
+        "Type" : "Mesh",
+        "Filename" : "models/ship.obj"
+    },
+
+    {
+        "ID" : "Diffuse",
+        "Type" : "Texture",
+        "Filename" : "textures/crate.png"
+    },
+
+    {
+        "ID" : "Rust",
+        "Type" : "Texture",
+        "Filename" : "textures/rusty.jpg"
+    },
+
+    {
+        "ID" : "Rust_Spec",
+        "Type" : "Texture",
+        "Filename" : "textures/rustySpec.png"
+    },
+
+    {
+        "ID" : "Ship",
+        "Type" : "Texture",
+        "Filename" : "textures/ship_texture.png"
+    },
+
+    {
+        "ID" : "Ship_Spec",
+        "Type" : "Texture",
+        "Filename" : "textures/ship_spec_map.png"
+    },
+
+    {
+        "ID" : "Loam",
+        "Type" : "Texture",
+        "Filename" : "textures/loam.jpg"
+    },
+
+    {
+        "ID" : "Rock",
+        "Type" : "Texture",
+        "Filename" : "textures/rock.jpg"
+    },
+
+    {
+        "ID" : "Space",
+        "Type" : "Texture",
+        "Filename" : "textures/SpaceCubeMap.dds"
+    },
+
+    {
+        "ID" : "GreenSpace",
+        "Type" : "Texture",
+        "Filename" : "textures/greenSpace.dds"
+    },
+
+    {
+        "ID" : "PurpleSpace",
+        "Type" : "Texture",
+        "Filename" : "textures/purpleSpace.dds"
+    },
+
+    {
+        "ID" : "RandomNoise",
+        "Type" : "Texture",
+        "Filename" : "textures/noise.png"
+    },
+
+    {
+        "ID" : "Perlin",
+        "Type" : "Texture",
+        "Filename" : "textures/perlin_noise_seamless.png"
+    },
+
+    {
+        "ID" : "StandardVertex",
+        "Type" : "Shader",
+        "Stage" : "Vertex",
+        "Filename" : "VertexShader.cso"
+    },
+
+    {
+        "ID" : "StandardPixel",
+        "Type" : "Shader",
+        "Stage" : "Pixel",
+        "Filename" : "PixelShader.cso"
+    },
+
+    {
+        "ID" : "ShipVertex",
+        "Type" : "Shader",
+        "Stage" : "Vertex",
+        "Filename" : "ShipVS.cso"
+    },
+
+    {
+        "ID" : "ShipPixel",
+        "Type" : "Shader",
+        "Stage" : "Pixel",
+        "Filename" : "ShipPS.cso"
+    },
+
+    {
+        "ID" : "ColliderPixel",
+        "Type" : "Shader",
+        "Stage" : "Pixel",
+        "Filename" : "ColliderPS.cso"
+    },
+
+    {
+        "ID" : "SkyboxVertex",
+        "Type" : "Shader",
+        "Stage" : "Vertex",
+        "Filename" : "SkyboxVertex.cso"
+    },
+
+    {
+        "ID" : "SkyboxPixel",
+        "Type" : "Shader",
+        "Stage" : "Pixel",
+        "Filename" : "SkyboxPixel.cso"
+    },
+
+    {
+        "ID" : "AsteroidVertex",
+        "Type" : "Shader",
+        "Stage" : "Vertex",
+        "Filename" : "AsteroidVertexShader.cso"
+    },
+
+    {
+        "ID" : "AsteroidPixel",
+        "Type" : "Shader",
+        "Stage" : "Pixel",
+        "Filename" : "AsteroidPixelShader.cso"
+    },
+
+    {
+        "ID" : "default",
+        "Type" : "Material",
+        "VertexShader" : "StandardVertex",
+        "PixelShader" : "StandardPixel",
+        "Textures" : [ 
+            { "Key" : "diffuseTexture", "TextureName" : "Diffuse" },
+            { "Key" : "rustTexture", "TextureName" : "Rust" },
+            { "Key" : "specMapTexture", "TextureName" : "Rust_Spec" }
+        ]
+    },
+
+    {
+        "ID" : "ship",
+        "Type" : "Material",
+        "VertexShader" : "ShipVertex",
+        "PixelShader" : "ShipPixel",
+        "Textures" : [ 
+            { "Key" : "shipTexture", "TextureName" : "Ship" },
+            { "Key" : "shipSpecMap", "TextureName" : "Ship_Spec" }
+        ]
+    },
+    {
+        "ID" : "collider",
+        "Type" : "Material",
+        "VertexShader" : "StandardVertex",
+        "PixelShader" : "ColliderPixel",
+        "Textures" : [ 
+            { "Key" : "loamTexture", "TextureName" : "Loam" },
+            { "Key" : "rockTexture", "TextureName" : "Rock" }
+        ]
+    },
+    {
+        "ID" : "asteroid",
+        "Type" : "Material",
+        "VertexShader" : "AsteroidVertex",
+        "PixelShader" : "AsteroidPixel",
+        "Textures" : [ 
+            { "Key" : "diffuseTexture", "TextureName" : "Diffuse" },
+            { "Key" : "rustTexture", "TextureName" : "Rust" },
+            { "Key" : "specMapTexture", "TextureName" : "Rust_Spec" },
+            { "Key" : "noiseTexture", "TextureName" : "RandomNoise" },
+            { "Key" : "perlinTexture", "TextureName" : "Perlin" }
+        ]
+    }
+]

@@ -13,7 +13,6 @@ private:
 
     virtual void Enter( void ) = 0;
     virtual void Update( float deltaTime, float totalTime ) = 0;
-    virtual void Render( float deltaTime, float totalTime, ID3D11RenderTargetView* const pRenderTargetView, ID3D11DepthStencilView* const pDepthStencilView ) = 0;
     virtual void Exit( void ) = 0;
 public:
     virtual ~IGameState() {}

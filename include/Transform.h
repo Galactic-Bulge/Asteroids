@@ -16,6 +16,7 @@ private:
     DirectX::XMFLOAT3 translation;      // (X,Y,Z) coordinates
     DirectX::XMFLOAT3 scale;            // (X,Y,Z) scale
     DirectX::XMFLOAT4 rotation;         // Rotation Quaternion
+    DirectX::XMFLOAT3 rotationEuler;    // Rotation Euler
 
 public:
 	Transform();
@@ -35,6 +36,7 @@ public:
 	DirectX::XMFLOAT3               GetTranslation()    const;
 	DirectX::XMFLOAT3               GetScale()          const;
 	DirectX::XMFLOAT4               GetRotation()       const;
+	DirectX::XMFLOAT3               GetRotationEuler()  const;
 	const std::vector<Transform*>&  GetChildren()       const;
 
 	/* Setters */

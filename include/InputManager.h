@@ -2,82 +2,101 @@
 #define INPUT_MANAGER_H
 
 // Windows
-#include <Windows.h>
+#include <windows.h>
 
-#include "Keycodes.h"
+// Singleton
+#include "Singleton.h"
 
-struct KeyInfo
-{
-    bool isKeyDown;
-    float keyHeldDuration;
-};
+// DirectXTK
+#include <Keyboard.h>
+#include <Mouse.h>
 
-enum MouseButton{ LMB = VK_LBUTTON, RMB = VK_RBUTTON, MMB = VK_MBUTTON };
+/*
+ * Enum representing mouse buttons:
+ * LMB - Left Mouse Button.
+ * MMB - Middle Mouse Button.
+ * RMB - Right Mouse Button.
+ */
+enum class MouseButton { LMB, MMB, RMB };
 
-class InputManager
+class InputManager : public Singleton<InputManager>
 {
 private:
+    // Keyboard variables
+    DirectX::Keyboard* m_pKeyboard;
+    DirectX::Keyboard::State m_kbState;
+    DirectX::Keyboard::KeyboardStateTracker* m_pKBStateTracker;
+
+    // Mouse variables
+    DirectX::Mouse* m_pMouse;
+    DirectX::Mouse::State m_mouseState;
+    DirectX::Mouse::ButtonStateTracker* m_pMouseStateTracker;
     bool m_didMouseMove;            // Boolean indicating if the mouse moved this frame
     POINT m_prevPos, m_currPos;     // Current and previous mouse positions
-    KeyInfo m_keys[ NUM_KEYS ];     // Array of keyboard state
-
-    // Private to prevent construction outside instance() method
-	InputManager() : m_didMouseMove( false ) {}
-	~InputManager() {}
-
-    // Deleted to prevent copying/moving
-	InputManager(const InputManager& rhs) = delete;
-	InputManager(InputManager&& rhs) = delete;
-	InputManager& operator=(const InputManager& rhs) = delete;
-	InputManager& operator=(InputManager&& rhs) = delete;
 
 public:
+	InputManager(void);
+	virtual ~InputManager(void);
+
     /*
-     * Access the InputManager Singleton
+     * Set the HWND to be used by the InputManager.
+     * @param   window      The window handle to use.
      */
-    static InputManager* instance();
+    void SetWindow(HWND window);
 
     /*
      * Update the state of the InputManager
      * @param   deltaTime   Elapsed time between frames
      */
-    void Update( float deltaTime );
+    void Update(float deltaTime);
 
     /*
-     * Check if the provided key is pressed.
+     * Check if the provided key is down.
      * @param   key         The key to test.
      */
 	bool IsKeyDown(SHORT key) const;
 
     /*
-     * Check if the provided MouseButton is pressed.
-     * @param   btn         The MouseButton to test.
-     */
-    bool IsMouseDown(MouseButton btn) const;
-
-    /*
-     * Check if the provided key is released.
+     * Check if the provided key is up.
      * @param   key         The key to test.
      */
 	bool IsKeyUp(SHORT key) const;
 
     /*
-     * Check if the provided MouseButton is released.
+     * Check if the provided key was pressed this frame.
+     * @param   key         The key to test.
+     */
+	bool IsKeyPressed(SHORT key) const;
+
+    /*
+     * Check if the provided key was released this frame.
+     * @param   key         The key to test.
+     */
+    bool IsKeyReleased(SHORT key) const;
+
+    /*
+     * Check if the provided MouseButton is down.
+     * @param   btn         The MouseButton to test.
+     */
+    bool IsMouseDown(MouseButton btn) const;
+
+    /*
+     * Check if the provided MouseButton is up.
      * @param   btn         The MouseButton to test.
      */
     bool IsMouseUp(MouseButton btn) const;
 
     /*
-     * Return the duration that the provided key has been held.
-     * @param   key         The key to test.
-     */
-    float KeyHeldDuration(SHORT key) const;
-
-    /*
-     * Return the duration that the provided MouseButton has been held.
+     * Check if the provided MouseButton was pressed this frame.
      * @param   btn         The MouseButton to test.
      */
-    float MouseHeldDuration(MouseButton btn) const;
+	bool IsMousePressed(MouseButton btn) const;
+
+    /*
+     * Check if the provided MouseButton was released this frame.
+     * @param   btn         The MouseButton to test.
+     */
+    bool IsMouseReleased(MouseButton btn) const;
 
     /*
      * Returns the current location of the cursor.
@@ -88,27 +107,6 @@ public:
      * Returns the previous location of the cursor.
      */
     POINT GetPreviousMousePos() const;
-
-    /*
-     * Invoked by the message processing function on WM_MOUSEMOVE
-     */
-    void ReceiveMouseDown( HWND hWnd, WPARAM btnState, int x, int y );
-
-    /*
-     *  Invoked by the message processing function on:
-     *      WM_LBUTTONUP
-     *      WM_RBUTTONUP
-     *      WM_MBUTTONUP
-     */
-    void ReceiveMouseUp( HWND hWnd, WPARAM btnState, int x, int y );
-
-    /*
-     *  Invoked by the message processing function on:
-     *      WM_LBUTTONDOWN
-     *      WM_RBUTTONDOWN
-     *      WM_MBUTTONDOWN
-     */
-    void ReceiveMouseMove( HWND hWnd, WPARAM btnState, int x, int y );
 };
 
 #endif

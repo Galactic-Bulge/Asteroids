@@ -14,12 +14,18 @@
 // Windows
 #include <WindowsX.h>
 
+// DirectXTK
+#include <Keyboard.h>
+#include <Mouse.h>
+
 // STD
 #include <sstream>
 
 // Managers
 #include "InputManager.h"
 #include "CameraManager.h"
+#include "EntityManager.h"
+#include "ResourceManager.h"
 
 // State
 #include "StateMachine.h"
@@ -130,10 +136,10 @@ bool DirectXGameCore::Init()
 		return false;
 
 	// Register Game States
-    StateMachine<GameStates>* pState = StateMachine<GameStates>::instance();
-    pState->RegisterState<MenuState>( GameStates::MENU, device, deviceContext, swapChain );
-    pState->RegisterState<GameState>( GameStates::GAME, device, deviceContext, swapChain );
-    pState->RegisterState<ExitState>( GameStates::EXIT, device, deviceContext, swapChain );
+    StateMachine<GameStates>* pState = StateMachine<GameStates>::Instance();
+    pState->RegisterState<MenuState>( GameStates::MENU );
+    pState->RegisterState<GameState>( GameStates::GAME );
+    pState->RegisterState<ExitState>( GameStates::EXIT );
     pState->GoToState( GameStates::MENU );
 
 	// Everything was set up properly
@@ -198,6 +204,9 @@ bool DirectXGameCore::InitMainWindow()
 		return false;
 	}
 
+    // Register the HWND with the InputManager
+    InputManager::Instance()->SetWindow(hMainWnd);
+
 	// Finally show the window to the user
 	ShowWindow(hMainWnd, SW_SHOW);
 	return true;
@@ -260,6 +269,9 @@ bool DirectXGameCore::InitDirect3D()
 		return false;
 	}
 
+	ResourceManager::Instance()->RegisterDeviceAndContext(device, deviceContext);
+    ResourceManager::Instance()->RegisterSwapChain(swapChain);
+
 	// There are several remaining steps before we can reasonably use DirectX.
 	// These steps also need to happen each time the window is resized, 
 	// so we simply call the OnResize method here.
@@ -318,6 +330,9 @@ void DirectXGameCore::OnResize()
 	// uses the underlying textures
 	deviceContext->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
 
+    // Update the ResourceManager with the new RenderTarget and DepthStencil Views
+    ResourceManager::Instance()->RegisterRenderTargetAndDepthStencilView(renderTargetView, depthStencilView);
+
 	// Update the viewport to match the new window size and set it on the device
 	viewport.TopLeftX	= 0;
 	viewport.TopLeftY	= 0;
@@ -331,7 +346,7 @@ void DirectXGameCore::OnResize()
 	aspectRatio = (float)windowWidth / windowHeight;
 
     // Update the active Camera
-    Camera* active = CameraManager::instance()->GetActiveCamera();
+    Camera* active = CameraManager::Instance()->GetActiveCamera();
     active->SetAspectRatio( aspectRatio );
 }
 #pragma endregion
@@ -372,11 +387,10 @@ int DirectXGameCore::Run()
 			// Standard game loop type stuff
 			CalculateFrameStats();
 
-			InputManager::instance()->Update( deltaTime );
-
-            CameraManager::instance()->Update( deltaTime );
-
-            StateMachine<GameStates>::instance()->Update( deltaTime, totalTime, renderTargetView, depthStencilView );
+			InputManager::Instance()->Update(deltaTime);
+            CameraManager::Instance()->Update(deltaTime);
+            StateMachine<GameStates>::Instance()->Update(deltaTime, totalTime);
+            EntityManager::Instance()->Update(deltaTime, totalTime);
 		}
 	}
 
@@ -580,27 +594,33 @@ LRESULT DirectXGameCore::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200; 
 		return 0;
 
-	// Messages that correspond to mouse button being pressed while the cursor
-	// is currently over our window
+    case WM_ACTIVATEAPP:
+        DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
+        DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
+        return 0;
+
+    case WM_INPUT:
 	case WM_LBUTTONDOWN:
 	case WM_MBUTTONDOWN:
 	case WM_RBUTTONDOWN:
-        InputManager::instance()->ReceiveMouseDown( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
-		return 0;
-
-	// Messages that correspond to mouse button being released while the cursor
-	// is currently over our window
+    case WM_XBUTTONDOWN:
 	case WM_LBUTTONUP:
 	case WM_MBUTTONUP:
 	case WM_RBUTTONUP:
-        InputManager::instance()->ReceiveMouseUp( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
-		return 0;
-
-	// Message that occurs while the mouse moves over the window or while
-	// we're currently capturing it
+    case WM_XBUTTONUP:
 	case WM_MOUSEMOVE:
-        InputManager::instance()->ReceiveMouseMove( hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) );
-		return 0;
+    case WM_MOUSEHOVER:
+    case WM_MOUSEWHEEL:
+        DirectX::Mouse::ProcessMessage(msg, wParam, lParam);
+        return 0;
+
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+        DirectX::Keyboard::ProcessMessage(msg, wParam, lParam);
+        return 0;
+
 	}
 
 	// Some other message was sent, so call the default window procedure for it
@@ -608,7 +628,3 @@ LRESULT DirectXGameCore::ProcessMessage(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 }
 
 #pragma endregion
-
-
-
-

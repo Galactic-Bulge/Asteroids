@@ -14,11 +14,14 @@ Material::~Material()
 
 void Material::WriteShaderInfo()
 {
-	ResourceManager* pManager = ResourceManager::instance();
+	ResourceManager* pManager = ResourceManager::Instance();
 
 	for (auto pair : textures)
 	{
 		pixelShader->SetShaderResourceView(pair.first, pManager->GetTexture(pair.second));
 	}
-	pixelShader->SetShader(true);
+	for (auto pair : textures)
+	{
+		vertexShader->SetShaderResourceView(pair.first, pManager->GetTexture(pair.second));
+	}
 }

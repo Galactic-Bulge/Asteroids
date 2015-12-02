@@ -1,10 +1,12 @@
-
-// Constant buffer for C++ data being passed in
-cbuffer externalData : register(b0)
+cbuffer PerFrame : register(b0)
 {
-    matrix world;
     matrix view;
     matrix projection;
+};
+
+cbuffer PerObject : register(b1)
+{
+    matrix world;
 };
 
 // Describes individual vertex data
@@ -19,8 +21,8 @@ struct VertexShaderInput
 struct VertexToPixel
 {
     float4 position		: SV_POSITION;
+    float3 worldPos     : POSITION;
     float3 normal       : NORMAL;
-    float3 worldPos     : TEXCOORD0;
     float2 uv           : TEXCOORD1;
 };
 

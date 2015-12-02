@@ -25,7 +25,7 @@ private:
 	 *	Update function to be provided by the child class.
 	 *	@param	dt		The delta time value this frame.
 	 */
-	virtual void Update(float dt) = 0;
+	virtual void Update(float dt) {};
 
 protected:
 	float m_moveSpeed, m_rotationSpeed;						// Camera's movement and rotation speeds				

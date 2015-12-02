@@ -5,7 +5,7 @@ using namespace DirectX;
 const float Camera::DEFAULT_FOV = 0.25f * XM_PI;
 const float Camera::DEFAULT_ASPECT_RATIO = 4.0f / 3.0f;
 const float Camera::DEFAULT_NEAR_PLANE = 0.1f;
-const float Camera::DEFAULT_FAR_PLANE = 100.0f;
+const float Camera::DEFAULT_FAR_PLANE = 300.0f;
 const float Camera::DEFAULT_MOVE_SPEED = 5.0f;
 const float Camera::DEFAULT_ROTATION_SPEED = 5.0f;
 

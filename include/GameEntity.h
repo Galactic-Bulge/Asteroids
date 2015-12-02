@@ -1,33 +1,36 @@
 #ifndef GAME_ENTITY_H
 #define GAME_ENTITY_H
 
-// DirectX
-#include <DirectXMath.h>
-#include "Renderer.h"
+// STD
+#include <string>
 
-#include "Transform.h"
-
-/*
-TODO 
-Handle velocity and movement
-Abstract this class for use as custom entities
-*/
-class GameEntity
+struct GameEntity
 {
+private:
+    std::uint32_t m_id; // Unique ID for this GameEntity.
+    std::string m_tag;	// Tag used to identify entity type
+
 public:
 
-	GameEntity(Mesh* mesh, Material* mat);
-	~GameEntity(void);
+    /*
+     * Construct an invalid GameEntity with an ID of 0.
+     */
+    GameEntity(void) : m_id(0), m_tag("Invalid") { /* Nothing to do */ }
 
-	void Update(float dt);
-	void Draw();
+    /*
+     * Construct a GameEntity with the provided ID.
+     * @param   id      The id for this GameEntity.
+     */
+    GameEntity(std::uint32_t id, const std::string& t) : m_id(id), m_tag(t) { /* Nothing to do */ }
 
-	Renderer GetRenderer() { return renderer; }
-    Transform* GetTransform() { return &transform; }
+    /* Getters */
+    const std::uint32_t id(void) const { return m_id; }
+    const std::string& GetTag(void) const { return m_tag; }
 
-private:
-	Renderer renderer;
-	Transform transform;
+    GameEntity(const GameEntity& rhs) = default;
+    GameEntity& operator=(const GameEntity& rhs) = default;
+    GameEntity(GameEntity&& rhs) = default;
+    GameEntity& operator=(GameEntity&& rhs) = default;
 };
 
 #endif

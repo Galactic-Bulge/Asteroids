@@ -1,12 +1,18 @@
 #include "ResourceManager.h"
 
+// STD
+#include <iostream>
+#include <fstream>
+#include <stdexcept>
+
 // DirectX
-#include "WICTextureLoader.h"
 #include "DXMacros.h"
+#include "WICTextureLoader.h"
+#include "DDSTextureLoader.h"
 
-ResourceManager::ResourceManager() {}
+ResourceManager::ResourceManager(void) {}
 
-ResourceManager::~ResourceManager()
+ResourceManager::~ResourceManager(void)
 {
     // Meshes are stack-allocated and automatically cleaned up.
 
@@ -17,7 +23,7 @@ ResourceManager::~ResourceManager()
     }
 
     // Release Textures
-	for ( auto& pair : textures) 
+	for ( auto& pair : textures)
     {
         ReleaseMacro( pair.second );
 	}
@@ -27,6 +33,18 @@ ResourceManager::~ResourceManager()
 	{
 		ReleaseMacro(pair.second);
 	}
+
+    // Release RasterizerStates.
+    for(auto& pair : rasterizers)
+    {
+        ReleaseMacro(pair.second);
+    }
+
+    // Release DepthStencilStates.
+    for(auto& pair : depthStencils)
+    {
+        ReleaseMacro(pair.second);
+    }
 
 	// Release Materials
 	for (auto& pair : materials)
@@ -47,17 +65,28 @@ void ResourceManager::RegisterDeviceAndContext( ID3D11Device* const device, ID3D
 }
 
 /*
- * Access the ResourceManager Singleton
+ * Register an ID3D11RenderView and ID3D11DepthStencilView with the ResourceManager.
+ * @param   pRender             The ID3D11RenderTargetView to register.
+ * @param   pDepthStencil       The ID3D11DepthStencilView to register.
  */
-ResourceManager* ResourceManager::instance() 
+void ResourceManager::RegisterRenderTargetAndDepthStencilView(ID3D11RenderTargetView* pRender, ID3D11DepthStencilView* pDepthStencil)
 {
-    static ResourceManager manager;
-    return &manager;
+    this->renderTargetView = pRender;
+    this->depthStencilView = pDepthStencil;
 }
 
-#pragma region Getters 
+/*
+ * Register an IDXGISwapChain
+ * @param   pSwapChain          The IDXGISwapChain to register.
+ */
+void ResourceManager::RegisterSwapChain(IDXGISwapChain* pSwapChain)
+{
+    this->swapChain = pSwapChain;
+}
 
-Mesh* ResourceManager::GetMesh( const std::string& id ) 
+#pragma region Getters
+
+Mesh* ResourceManager::GetMesh( const std::string& id )
 {
     auto& iter = meshes.find( id );
     if( iter == meshes.cend() )
@@ -68,7 +97,7 @@ Mesh* ResourceManager::GetMesh( const std::string& id )
     return &iter->second;
 }
 
-ISimpleShader* ResourceManager::GetShader( const std::string& id ) 
+ISimpleShader* ResourceManager::GetShader( const std::string& id )
 {
     auto& iter = shaders.find( id );
     if( iter == shaders.cend() )
@@ -79,7 +108,7 @@ ISimpleShader* ResourceManager::GetShader( const std::string& id )
     return iter->second;
 }
 
-ID3D11ShaderResourceView* ResourceManager::GetTexture( const std::string& id ) 
+ID3D11ShaderResourceView* ResourceManager::GetTexture( const std::string& id )
 {
     auto& iter = textures.find( id );
     if( iter == textures.cend() )
@@ -98,6 +127,26 @@ ID3D11SamplerState* ResourceManager::GetSamplerState( const std::string& id )
         return nullptr;
     }
 
+    return iter->second;
+}
+
+ID3D11RasterizerState*      ResourceManager::GetRasterizerState(const std::string& id)
+{
+    auto& iter = rasterizers.find(id);
+    if(iter == rasterizers.cend())
+    {
+        return nullptr;
+    }
+    return iter->second;
+}
+
+ID3D11DepthStencilState*    ResourceManager::GetDepthStencilState(const std::string& id)
+{
+    auto& iter = depthStencils.find(id);
+    if(iter == depthStencils.cend())
+    {
+        return nullptr;
+    }
     return iter->second;
 }
 
@@ -120,7 +169,7 @@ Material* ResourceManager::GetMaterial(const std::string& id)
  * @param       filename    The filename of the texture.
  * @return  A bool indicating if the operation was successful.
  */
-bool ResourceManager::RegisterTexture( const std::string& id, LPCWSTR filename )
+bool ResourceManager::RegisterTexture( const std::string& id, const std::wstring& filename )
 {
     // Bail if there is not a registered ID3D11Device or ID3D11DeviceContext
     if( !device || !deviceContext )
@@ -134,12 +183,19 @@ bool ResourceManager::RegisterTexture( const std::string& id, LPCWSTR filename )
         return false;
     }
 
-    // Create the ID3D11ShaderResourceView*
+    ID3D11ShaderResourceView* pTexture;
+
+    // Check if we are loading a DDS texture
+    std::size_t index = filename.find(L".dds");
+    if(index == std::string::npos)
     {
-        ID3D11ShaderResourceView* pTexture;
-        DirectX::CreateWICTextureFromFile(device, deviceContext, filename, 0, &pTexture);
-        textures.emplace( id, pTexture );
+        DirectX::CreateWICTextureFromFile(device, deviceContext, filename.c_str(), 0, &pTexture);
     }
+    else
+    {
+        DirectX::CreateDDSTextureFromFile(device, deviceContext, filename.c_str(), 0, &pTexture);
+    }
+    textures.emplace( id, pTexture );
 
     return true;
 }
@@ -174,3 +230,232 @@ bool ResourceManager::RegisterSamplerState( const std::string& id, D3D11_SAMPLER
 
     return true;
 }
+
+/*
+ * Register an ID3D11RasterizerState with the ResourceManager.
+ * @param       id                  The id to store the ID3D11RasterizerState* at.
+ * @param       rasterizerDesc      The description used to instantiate the ID3D11RasterizerState.
+ * @return A boolean indicating if the operation was successful.
+ */
+bool ResourceManager::RegisterRasterizerState(const std::string& id, D3D11_RASTERIZER_DESC rasterizerDesc)
+{
+    // Bail if there is not a registered ID3D11Device or ID3D11DeviceContext
+    if(!device || !deviceContext)
+    {
+        return false;
+    }
+
+    // Bail if there is already an ID3D11RasterizerState* stored at that id
+    if(rasterizers.find(id) != rasterizers.cend())
+    {
+        return false;
+    }
+
+    // Create the ID3D11RasterizerState*
+    ID3D11RasterizerState* pRasterizerState;
+    HR(device->CreateRasterizerState(&rasterizerDesc, &pRasterizerState));
+    rasterizers.emplace(id, pRasterizerState);
+
+    return true;
+}
+
+/*
+ * Register an ID3D11DepthStencilState with the ResourceManager.
+ * @param       id                  The id to store the ID3D11DepthStencilState at.
+ * @param       depthStencilDesc    The description used to instantiate the ID3D11DepthStencilState.
+ * @return A boolean indicating if the operation was successful.
+ */
+bool ResourceManager::RegisterDepthStencilState(const std::string& id, D3D11_DEPTH_STENCIL_DESC depthStencilDesc)
+{
+    // Bail if there is not a registered ID3D11Device or ID3D11DeviceContext
+    if(!device || !deviceContext)
+    {
+        return false;
+    }
+
+    // Bail if there is already an ID3D11DepthStencilState* stored at that id
+    if(depthStencils.find(id) != depthStencils.cend())
+    {
+        return false;
+    }
+
+    // Create the ID3D11DepthStencilState*
+	ID3D11DepthStencilState* pDepthStencilState;
+    HR(device->CreateDepthStencilState(&depthStencilDesc, &pDepthStencilState));
+    depthStencils.emplace(id, pDepthStencilState);
+
+    return true;
+}
+
+#pragma region JSON Methods
+
+/*
+ * JSON Parsing Methods:
+ *  Responsible for registering the appropriate object based on the provided parameters.
+ *  Note: JSON library will throw std::domain_error on missing key/value pairs.
+ *
+ *  Parameters:
+ *      obj --  The JSON object to be parsed.
+ *      parent -- The JSON array containing all other resources.
+ */
+
+using json = nlohmann::json;
+
+void ResourceManager::ParseTexture(json obj, json parent)
+{
+    std::string id = obj["ID"];
+    std::string filename = obj["Filename"];
+
+    RegisterTexture(id, std::wstring(filename.begin(), filename.end()).c_str());
+}
+
+void ResourceManager::ParseMesh(json obj, json parent)
+{
+    std::string id = obj["ID"];
+    std::string filename = obj["Filename"];
+
+    RegisterMesh(id, filename);
+}
+
+void ResourceManager::ParseShader(json obj, json parent)
+{
+    std::string id = obj["ID"];
+    std::string filename = obj["Filename"];
+    std::string stage = obj["Stage"];
+
+    // Register the appropriate type of shader.
+    if(stage == "Vertex")
+    {
+        RegisterShader<SimpleVertexShader>(id, std::wstring(filename.begin(), filename.end()).c_str());
+    }
+    else if(stage == "Pixel")
+    {
+        RegisterShader<SimplePixelShader>(id, std::wstring(filename.begin(), filename.end()).c_str());
+    }
+}
+
+void ResourceManager::ParseMaterial(json obj, json parent)
+{
+    std::string id = obj["ID"];
+    std::string vShader = obj["VertexShader"];
+    std::string pShader = obj["PixelShader"];
+
+    // Attempt to locate the Vertex Shader.
+    SimpleVertexShader* pVertex = static_cast<SimpleVertexShader*>(GetShader(vShader));
+    if(!pVertex)
+    {
+        ParseShader(parent[vShader], parent);
+        pVertex = static_cast<SimpleVertexShader*>(GetShader(vShader));
+
+        if(!pVertex)
+        {
+            throw std::domain_error("Missing Vertex Shader!");
+        }
+    }
+
+    // Attempt to locate the Pixel Shader.
+    SimplePixelShader* pPixel = static_cast<SimplePixelShader*>(GetShader(pShader));
+    if(!pPixel)
+    {
+        ParseShader(parent[pShader], parent);
+        pPixel = static_cast<SimplePixelShader*>(GetShader(pShader));
+
+        if(!pPixel)
+        {
+            throw std::domain_error("Missing Pixel Shader!");
+        }
+    }
+
+    // Create the Material.
+    Material* pMaterial = new Material(pVertex, pPixel);
+
+    // Add Textures.
+    auto arr = obj["Textures"];
+    for(auto& texture : arr)
+    {
+        std::string key = texture["Key"];
+        std::string textureName = texture["TextureName"];
+
+        ID3D11ShaderResourceView* pTex = GetTexture(textureName);
+        if(!pTex)
+        {
+            ParseTexture(parent[textureName], parent);
+            pTex = GetTexture(textureName);
+
+            if(!pTex)
+            {
+                delete pMaterial; // Cleanup the Material.
+                throw std::domain_error("Missing Texture!");
+            }
+        }
+
+        pMaterial->AddTexture(key, textureName);
+    }
+
+    // Finally register the Material.
+    RegisterMaterial(id, pMaterial);
+}
+
+/*
+ * Attempts to parse the provided JSON file for resources.
+ * @param   filename    The string indicating the JSON file to be parsed.
+ * @returns A boolean indicating if this operation was successful.
+ */
+bool ResourceManager::ParseJSONFile(const std::string& filename)
+{
+    std::ifstream filestream(filename);
+    if(filestream.is_open())
+    {
+        json jsonObj;
+
+        // Parse the JSON file.
+        try
+        {
+            filestream >> jsonObj;
+        }
+        // JSON library will throw std::invalid_argument on improperly formatted JSON.
+        catch(std::invalid_argument e)
+        {
+            std::cerr << filename << " " << e.what() << std::endl;
+            return false;
+        }
+
+        // Iterate through the objects in the JSON array.
+        for(auto& member : jsonObj)
+        {
+            try
+            {
+                // Attempt to discern the resource's type.
+                std::string type = member["Type"];
+                if(type == "Mesh")
+                {
+                    ParseMesh(member, jsonObj);
+                }
+                else if(type == "Texture")
+                {
+                    ParseTexture(member, jsonObj);
+                }
+                else if(type == "Shader")
+                {
+                    ParseShader(member, jsonObj);
+                }
+                else if(type == "Material")
+                {
+                    ParseMaterial(member, jsonObj);
+                }
+            }
+            // JSON library will throw std::domain_error on missing values.
+            catch(std::domain_error e)
+            {
+                std::cerr << "Error Parsing " << member << ": " << e.what() << std::endl;
+                continue;
+            }
+        }
+
+        return true; // We have finished parsing the file.
+    }
+
+    return false; // We failed to open th file.
+}
+
+#pragma endregion
