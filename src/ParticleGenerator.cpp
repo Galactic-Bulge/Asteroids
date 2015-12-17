@@ -39,7 +39,6 @@ ParticleGenerator::ParticleGenerator(Particle p, DirectX::XMFLOAT3 pos, float lt
 	// Set constant variables
 	generatorGS->SetFloat("dt", 0.0f);
 	generatorGS->SetFloat("tt", 0.0f);
-	generatorGS->SetFloat("lifeTime", lifeTime);
 	generatorGS->SetFloat("spawnRate", spawnRate);
 	generatorGS->SetFloat3("generatorPos", position);
 	generatorGS->SetSamplerState("randomSampler", rManager->GetSamplerState("trilinear"));
@@ -86,9 +85,8 @@ void ParticleGenerator::Update(DirectX::XMFLOAT3 ePosition, float dt, float tt) 
 	// Set constant variables
 	generatorGS->SetFloat("dt", dt);
 	generatorGS->SetFloat("tt", tt);
-	generatorGS->SetFloat3("generatorPos", finalPos);
 	generatorGS->SetFloat("spawnRate", spawnRate);
-	generatorGS->SetFloat("lifeTime", lifeTime);
+	generatorGS->SetFloat3("generatorPos", finalPos);
 	generatorGS->SetSamplerState("randomSampler", rManager->GetSamplerState("trilinear"));
 	generatorGS->SetShaderResourceView("randomTexture", rManager->GetTexture("randomTexture"));
 

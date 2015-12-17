@@ -92,8 +92,8 @@ GameEntity EntityFactory::CreatePlayer(DirectX::XMFLOAT3 position)
 			   XMFLOAT3(0, 0, 0),
 			   XMFLOAT3(0, 0, 0),
 			   1.0f,
-			   3.0f,
-			   2.0f,
+			   0.0f,
+			   1.0f,
 			   0.0f,
 			   0);
 

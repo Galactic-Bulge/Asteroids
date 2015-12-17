@@ -11,7 +11,6 @@ cbuffer GeneratorData : register(b1)
 {
 	float3 generatorPos;
 	float  spawnRate;
-	float  lifeTime;
 };
 
 struct GSInput
@@ -19,14 +18,14 @@ struct GSInput
 	float4 startColor	: COLOR0;
 	float4 midColor		: COLOR1;
 	float4 endColor		: COLOR2;
+	float  size : TEXCOORD2;
+	float  age : TEXCOORD3;
+	float  lifeTime : TEXCOORD4;
+	float  startTime : TEXCOORD5;
+	int    type : TEXCOORD6;
 	float3 position		: POSITION;
 	float3 velocity		: TEXCOORD0;
 	float3 acceleration	: TEXCOORD1;
-	float  startSize	: TEXCOORD2;
-	float  midSize		: TEXCOORD3;
-	float  endSize		: TEXCOORD4;
-	float  age			: TEXCOORD5;
-	int    type			: TEXCOORD6;
 };
 
 texture1D randomTexture : register(t0);
@@ -34,7 +33,7 @@ sampler   randomSampler : register(s0);
 
 [maxvertexcount(2)]
 void main(point GSInput input[1],
-		  inout PointStream<GSInput> outStream)
+	inout PointStream<GSInput> outStream)
 {
 	// Increment particle age
 	input[0].age += dt;
@@ -45,31 +44,28 @@ void main(point GSInput input[1],
 			input[0].age = 0;
 
 			GSInput newParticle;
-			newParticle.startColor		= input[0].startColor;
-			newParticle.midColor		= input[0].midColor;
-			newParticle.endColor		= input[0].endColor;
-			newParticle.position		= generatorPos;
-			newParticle.velocity		= input[0].velocity;
-			newParticle.acceleration	= input[0].acceleration;
-			newParticle.startSize		= input[0].startSize;
-			newParticle.midSize			= input[0].midSize;
-			newParticle.endSize			= input[0].endSize;
-			newParticle.age				= 0.0f;
-			newParticle.type			= STANDARD;
+			newParticle.startColor = input[0].startColor;
+			newParticle.midColor = input[0].midColor;
+			newParticle.endColor = input[0].endColor;
+			newParticle.position = generatorPos;
+			newParticle.velocity = input[0].velocity;
+			newParticle.acceleration = input[0].acceleration;
+			newParticle.size = input[0].size;
+			newParticle.age = 0;
+			newParticle.lifeTime = input[0].lifeTime;
+			newParticle.startTime = tt;
+			newParticle.type = STANDARD;
 
 			// Random offsets
 			float4 random = randomTexture.SampleLevel(randomSampler, tt * 10, 0);
 			newParticle.position.xy += random.xy * 0.05f;
-			newParticle.velocity.x = 0;
-			newParticle.velocity.y = 0;
-			newParticle.velocity.z = input[0].velocity.z;
 
 			outStream.Append(newParticle);
 		}
 
 		outStream.Append(input[0]);
 	}
-	else if (input[0].age < lifeTime) {
+	else if (input[0].age < input[0].lifeTime) {
 		outStream.Append(input[0]);
 	}
 }
